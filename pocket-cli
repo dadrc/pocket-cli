@@ -1,0 +1,132 @@
+#!/usr/bin/env python3
+import argparse
+from urllib.parse import urlencode
+from urllib.parse import parse_qsl
+from urllib.parse import parse_qs
+from urllib.request import urlopen
+import urllib
+import configparser
+from os.path import isfile
+from os.path import expanduser
+import json
+
+# config
+consumer_key = '11411-11f6716adafdbf8ee3401509'
+api_base = 'https://getpocket.com/v3/'
+add_url = api_base + 'add'
+request_url =  api_base + 'oauth/request'
+authorize_url = api_base + 'oauth/authorize'
+get_url = api_base + 'get'
+rc_file = expanduser('~/.pocketrc')
+config = configparser.ConfigParser(allow_no_value=True)
+
+def pocket_request(values, target_url):
+	data = urlencode(values)
+	data = data.encode('UTF-8')
+	req = urllib.request.Request(target_url, data)
+	response = urlopen(req)
+	
+	if (response.status != 200):
+		raise Exception("Expected code 200, got %d" % response.status)
+	
+	# replace with parse_qs?
+	return dict(parse_qsl(response.read().decode('UTF-8')))
+
+def pocket_request_json(values, target_url):
+	data = urlencode(values)
+	data = data.encode('UTF-8')
+	req = urllib.request.Request(target_url, data)
+	response = urlopen(req)
+	
+	if (response.status != 200):
+		raise Exception("Expected code 200, got %d" % response.status)
+	
+	return json.loads(response.read().decode('UTF-8'))
+
+#oauth
+def oauth_code(key):
+	values = {
+			'consumer_key':key,
+			'redirect_uri':'https://getpocket.com/connected_accounts'
+	}
+	
+	resp_objects = pocket_request(values, request_url)
+	code = resp_objects['code']
+	
+	print("Please open https://getpocket.com/auth/authorize?request_token=%s&redirect_uri=https://getpocket.com/connected_accounts in your browser, authorize pocket-cli and run pocket-cli again." %  code)
+	return code
+
+def oauth_token(key, reqcode):
+	values = {
+			'consumer_key':key,
+			'code':reqcode
+	}
+	
+	resp_objects = pocket_request(values, authorize_url)
+	print(resp_objects)
+	token = resp_objects['access_token']
+	return token
+
+def list_unread(key, token):
+	values = {
+			'consumer_key':key,
+			'access_token':token,
+			'state':'unread'
+	}
+	
+	resp_objects = pocket_request_json(values, get_url)
+	print(resp_objects['list'])
+
+def add_to_pocket(key, token, url):
+	values = {'consumer_key':key, 'access_token':token, 'url':url}
+	response = pocket_request_json(values, add_url)
+	print(response)
+	item = response['item']
+	return item['item_id']
+
+# load config, perform oauth if necessary
+if (not isfile(rc_file)):
+	config['OAUTH'] = {
+			'code':'',
+			'token':''
+	}
+	with open(rc_file, 'w') as configfile:
+		config.write(configfile)
+
+config.read(rc_file)
+code = config['OAUTH']['code']
+token = config['OAUTH']['token']
+
+if (token == '' and code == ''):
+	# no token, no code, start oauth
+	code = oauth_code(consumer_key)
+	config['OAUTH']['code'] = code
+	with open(rc_file, 'w') as configfile:
+		config.write(configfile)
+	exit()
+elif (token == ''):
+	# got code, get token
+	token = oauth_token(consumer_key, code)
+	config['OAUTH']['token'] = token
+	with open(rc_file, 'w') as configfile:
+		config.write(configfile)
+# else: everything shiny
+print("Using access token %s." % token)
+
+# parse arguments
+parser = argparse.ArgumentParser(description='A command line tool to manage your pocket items')
+parser.add_argument('-a', '--add', metavar='URL', nargs='+', help='add the URL(s) to your pocket')
+args = parser.parse_args()
+
+#
+if args.add:
+	for url in args.add:
+		item_id = add_to_pocket(consumer_key, token, url)
+		print("Added URL '%s' as item %d." %(url, item_id))
+# no arguments given: list unread
+else:
+	list_unread(consumer_key, token)
+
+
+
+
