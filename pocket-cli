@@ -135,5 +135,5 @@ if args.add:
 if args.unread:
 	list_unread(consumer_key, token)
 
-
+#TODO encapsulate oauth, pocket. create main method parsing args, constructing pockethandler.
 
