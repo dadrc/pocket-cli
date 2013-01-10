@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import sys
 import argparse
 from urllib.parse import urlencode
 from urllib.parse import parse_qsl
@@ -112,22 +113,27 @@ elif (token == ''):
 	with open(rc_file, 'w') as configfile:
 		config.write(configfile)
 # else: everything shiny
-print("Using access token %s." % token)
 
 # parse arguments
 parser = argparse.ArgumentParser(description='A command line tool to manage your pocket items')
 parser.add_argument('-a', '--add', metavar='URL', nargs='+', help='add the URL(s) to your pocket')
+parser.add_argument('-u', '--unread', help='show a list of your unread items', action='store_true')
+parser.add_argument('-v', '--verbose', help='print totally helpful debug messages', action='store_true')
 args = parser.parse_args()
 
+if not len(sys.argv) > 1:
+	parser.print_help()
+	exit(1)
+
+if args.verbose:
+	print("DEBUG: Using access token %s." % token)
 #
 if args.add:
 	for url in args.add:
 		item_id = add_to_pocket(consumer_key, token, url)
 		print("Added URL '%s' as item %d." %(url, item_id))
-# no arguments given: list unread
-else:
+if args.unread:
 	list_unread(consumer_key, token)
-
 
 
 
