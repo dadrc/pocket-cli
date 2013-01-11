@@ -82,9 +82,7 @@ def list_unread(key, token):
 def add_to_pocket(key, token, url):
 	values = {'consumer_key':key, 'access_token':token, 'url':url}
 	response = pocket_request_json(values, add_url)
-	#print(response)
-	item = response['item']
-	return item['item_id']
+	return int(response['item']['item_id'])
 
 # load config, perform oauth if necessary
 if (not isfile(rc_file)):
