@@ -115,6 +115,8 @@ elif (token == ''):
 # parse arguments
 parser = argparse.ArgumentParser(description='A command line tool to manage your pocket items')
 parser.add_argument('-a', '--add', metavar='URL', nargs='+', help='add the URL(s) to your pocket')
+parser.add_argument('-i', '--item', metavar='ID', nargs=1, help='retrieve the item with the given ID from your pocket')
+parser.add_argument('-t', '--tag', metavar='TAG', nargs='+', help='add the TAG(s) to the current item (specified by --add or --item)')
 parser.add_argument('-u', '--unread', help='show a list of your unread items', action='store_true')
 parser.add_argument('-v', '--verbose', help='print totally helpful debug messages', action='store_true')
 args = parser.parse_args()
@@ -134,4 +136,4 @@ if args.unread:
 	list_unread(consumer_key, token)
 
 #TODO encapsulate oauth, pocket. create main method parsing args, constructing pockethandler.
-
+#TODO Add --item, --tag, --filter (by tag)
