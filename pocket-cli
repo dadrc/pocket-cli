@@ -76,7 +76,7 @@ def list_unread(key, token):
 	}
 	
 	unread_json = pocket_request_json(values, get_url)['list']
-	for item in unread_json.values():
+	for item in sorted(unread_json.values(), key=lambda item: item['sort_id']):
 		print("%s: https://getpocket.com/a/read/%s" % (item['resolved_title'], item['item_id']))
 
 def add_to_pocket(key, token, url):
