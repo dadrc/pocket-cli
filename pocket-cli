@@ -102,6 +102,14 @@ def add_to_pocket(key, token, url):
 	response = pocket_request_json(values, add_url)
 	return int(response['item']['item_id'])
 
+def add_with_tags(key, token, url, tags):
+	values = {'consumer_key':key, 'access_token':token, 'url':url, 'tags':tags}
+	response = pocket_request_json(values, add_url)
+	return int(response['item']['item_id'])
+
+def concatenate_tags(tag_list):
+	return ','.join(tag_list)
+
 # load config, perform oauth if necessary
 if (not isfile(rc_file)):
 	config['OAUTH'] = {
@@ -133,7 +141,7 @@ elif (token == ''):
 # parse arguments
 parser = argparse.ArgumentParser(description='A command line tool to manage your pocket items')
 parser.add_argument('-a', '--add', metavar='URL', nargs='+', help='add the URL(s) to your pocket')
-parser.add_argument('-t', '--tag', metavar='TAG', nargs='+', help='add the TAG(s) to the current item (specified by --add)')
+parser.add_argument('-t', '--tag', metavar='TAG', nargs='+', help='add the TAG( to the current item (specified by --add)')
 parser.add_argument('-u', '--unread', help='show a list of your unread items', action='store_true')
 parser.add_argument('-f', '--filter', metavar='TAG', nargs=1, help='show a list of all items with tag TAG')
 parser.add_argument('-v', '--verbose', help='print totally helpful debug messages', action='store_true')
@@ -146,8 +154,15 @@ if not len(sys.argv) > 1:
 if args.verbose:
 	print("DEBUG: Using access token %s." % token)
 #
+if args.tag and not args.add:
+	print("Currently --tag only works in conjuction with --add.")
 if args.add:
-	for url in args.add:
+	if args.tag:
+		tags = concatenate_tags(args.tag)
+		for url in args.add:
+			item_id = add_with_tags(consumer_key, token, url, tags)
+			print("Added URL '%s' as item %d, with tag %s." %(url, item_id, tags))
+	else:
 		item_id = add_to_pocket(consumer_key, token, url)
 		print("Added URL '%s' as item %d." %(url, item_id))
 if args.unread:
