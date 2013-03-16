@@ -12,165 +12,194 @@ from os.path import expanduser
 import json
 
 # config
-consumer_key = '11411-11f6716adafdbf8ee3401509'
 api_base = 'https://getpocket.com/v3/'
 add_url = api_base + 'add'
 request_url =  api_base + 'oauth/request'
 authorize_url = api_base + 'oauth/authorize'
 get_url = api_base + 'get'
-rc_file = expanduser('~/.pocketrc')
-config = configparser.ConfigParser(allow_no_value=True)
 
-def pocket_request(values, target_url):
-	data = urlencode(values)
-	data = data.encode('UTF-8')
-	req = urllib.request.Request(target_url, data)
-	response = urlopen(req)
+class PocketHandler:
+	key = ""
+	token = ""
+
+	def __init__(self, key, token):
+		self.token = token
+		self.key = key
+
+	def create_values(optional):
+		values = { 'consumer_key':self.key, 'access_token':self.token }
+		for key:values in optional.items():
+			values[key] = values
+
+	def pocket_request(values, target_url):
+		data = urlencode(values)
+		data = data.encode('UTF-8')
+		req = urllib.request.Request(target_url, data)
+		response = urlopen(req)
+		# error handling
+		if (response.status != 200):
+			raise Exception("Expected code 200, got %d" % response.status)
+		# replace with parse_qs?
+		return dict(parse_qsl(response.read().decode('UTF-8')))
+
+	def pocket_request_json(values, target_url):
+		data = urlencode(values)
+		data = data.encode('UTF-8')
+		req = urllib.request.Request(target_url, data)
+		response = urlopen(req)
+		# error handling
+		if (response.status != 200):
+			raise Exception("Expected code 200, got %d" % response.status)
+		return json.loads(response.read().decode('UTF-8'))
+
+
+	def list_filtered(tag):
+		values = create_values({'state':'all', 'tag':tag})
+		json = pocket_request_json(values, get_url)['list']
+		if not json:
+			print("No results.")
+		else:
+			for item in sorted(json.values(), key=lambda item: item['sort_id']):
+				print("%s: https://getpocket.com/a/read/%s"
+					% (item['resolved_title'], item['item_id']))
+
+	def list_unread():
+		values = create_values({'state':'unread'})
+		json = pocket_request_json(values, get_url)['list']
+		if not json:
+			print("No results")
+		else:
+			for item in sorted(json.values(), key=lambda item: item['sort_id']):
+				print("%s: https://getpocket.com/a/read/%s"
+					% (item['resolved_title'], item['item_id']))
+
+	def add_to_pocket(url):
+		values = create_values({'url':url})
+		response = pocket_request_json(values, add_url)
+		return int(response['item']['item_id'])
+
+	def add_with_tags(url, tags):
+		values = create_values({'url':url, 'tags':tags})
+		response = pocket_request_json(values, add_url)
+		return int(response['item']['item_id'])
+
+	def concatenate_tags(tag_list):
+		return ','.join(tag_list)
+
+class AuthHandler:
+	consumer_key = '11411-11f6716adafdbf8ee3401509'
+	rc_file = expanduser('~/.pocketrc')
+	config = configparser.ConfigParser(allow_no_value=True)
+	token = ""
+
+	def __init__(self):
+		# load config, perform oauth if necessary
+		if (not isfile(rc_file)):
+			config['OAUTH'] = {
+					'code':'',
+					'token':''
+			}
+			with open(rc_file, 'w') as configfile:
+				config.write(configfile)
+
+		config.read(rc_file)
+		code = config['OAUTH']['code']
+		if (self.token == '' and code == ''):
+			# no token, no code, start oauth
+			code = oauth_code(consumer_key)
+			config['OAUTH']['code'] = code
+			with open(rc_file, 'w') as configfile:
+				config.write(configfile)
+			exit()
+		elif (self.token == ''):
+			# got code, get token
+			token = oauth_token(consumer_key, code)
+			config['OAUTH']['token'] = token
+			with open(rc_file, 'w') as configfile:
+				config.write(configfile)
+			# else: everything shiny
 	
-	if (response.status != 200):
-		raise Exception("Expected code 200, got %d" % response.status)
-	
-	# replace with parse_qs?
-	return dict(parse_qsl(response.read().decode('UTF-8')))
+	#oauth
+	def oauth_code(key):
+		values = {
+				'consumer_key':key,
+				'redirect_uri':'https://getpocket.com/connected_accounts'
+		}
+		
+		resp_objects = pocket_request(values, request_url)
+		code = resp_objects['code']
+		
+		response = ("Please open "
+			"https://getpocket.com/auth/authorize?request_token=%s"
+			"&redirect_uri=https://getpocket.com/connected_accounts"
+			" in your browser, authorize pocket-cli and run pocket-cli again.")
+		print(response % code)
+		return code
 
-def pocket_request_json(values, target_url):
-	data = urlencode(values)
-	data = data.encode('UTF-8')
-	req = urllib.request.Request(target_url, data)
-	response = urlopen(req)
-	
-	if (response.status != 200):
-		raise Exception("Expected code 200, got %d" % response.status)
-	
-	return json.loads(response.read().decode('UTF-8'))
+	def oauth_token(key, reqcode):
+		values = {
+				'consumer_key':key,
+				'code':reqcode
+		}
+		
+		resp_objects = pocket_request(values, authorize_url)
+		#print(resp_objects)
+		token = resp_objects['access_token']
+		return token
 
-#oauth
-def oauth_code(key):
-	values = {
-			'consumer_key':key,
-			'redirect_uri':'https://getpocket.com/connected_accounts'
-	}
-	
-	resp_objects = pocket_request(values, request_url)
-	code = resp_objects['code']
-	
-	print("Please open https://getpocket.com/auth/authorize?request_token=%s&redirect_uri=https://getpocket.com/connected_accounts in your browser, authorize pocket-cli and run pocket-cli again." %  code)
-	return code
 
-def oauth_token(key, reqcode):
-	values = {
-			'consumer_key':key,
-			'code':reqcode
-	}
-	
-	resp_objects = pocket_request(values, authorize_url)
-	print(resp_objects)
-	token = resp_objects['access_token']
-	return token
+def main():
+	# init parser
+	parser = argparse.ArgumentParser(description=('A command line tool'
+		'to manage your pocket items'))
+	parser.add_argument('-a', '--add', metavar='URL', nargs='+',
+		help='add the URL(s) to your pocket')
+	parser.add_argument('-t', '--tag', metavar='TAG', nargs='+',
+		help='add the TAG to the current item (specified by --add)')
+	parser.add_argument('-u', '--unread', help='show a list of your unread items',
+		action='store_true')
+	parser.add_argument('-f', '--filter', metavar='TAG', nargs=1,
+		help='show a list of all items with tag TAG')
+	parser.add_argument('-v', '--verbose',
+		help='print totally helpful debug messages',
+		action='store_true')
+	args = parser.parse_args()
+	# parse arguments
+	if not len(sys.argv) > 1:
+		parser.print_help()
+		exit(1)
+	# we've got valid arguments, spawn stuff
+	auth = AuthHandler()
+	pocket = PocketHandler(auth.consumer_key, auth.token)
 
-def list_filtered(tag, key, token):
-	values = {
-			'consumer_key':key,
-			'access_token':token,
-			'state':'all',
-			'tag':tag
-	}
-
-	filtered_json = pocket_request_json(values, get_url)['list']
-	if not filtered_json:
-		print("No results.")
-	else:
-		for item in sorted(filtered_json.values(), key=lambda item: item['sort_id']):
-			print("%s: https://getpocket.com/a/read/%s" % (item['resolved_title'], item['item_id']))
-
-def list_unread(key, token):
-	values = {
-			'consumer_key':key,
-			'access_token':token,
-			'state':'unread'
-	}
-	
-	unread_json = pocket_request_json(values, get_url)['list']
-	if not unread_json:
-		print("No results")
-	else:
-		for item in sorted(unread_json.values(), key=lambda item: item['sort_id']):
-			print("%s: https://getpocket.com/a/read/%s" % (item['resolved_title'], item['item_id']))
-
-def add_to_pocket(key, token, url):
-	values = {'consumer_key':key, 'access_token':token, 'url':url}
-	response = pocket_request_json(values, add_url)
-	return int(response['item']['item_id'])
-
-def add_with_tags(key, token, url, tags):
-	values = {'consumer_key':key, 'access_token':token, 'url':url, 'tags':tags}
-	response = pocket_request_json(values, add_url)
-	return int(response['item']['item_id'])
-
-def concatenate_tags(tag_list):
-	return ','.join(tag_list)
-
-# load config, perform oauth if necessary
-if (not isfile(rc_file)):
-	config['OAUTH'] = {
-			'code':'',
-			'token':''
-	}
-	with open(rc_file, 'w') as configfile:
-		config.write(configfile)
-
-config.read(rc_file)
-code = config['OAUTH']['code']
-token = config['OAUTH']['token']
-
-if (token == '' and code == ''):
-	# no token, no code, start oauth
-	code = oauth_code(consumer_key)
-	config['OAUTH']['code'] = code
-	with open(rc_file, 'w') as configfile:
-		config.write(configfile)
-	exit()
-elif (token == ''):
-	# got code, get token
-	token = oauth_token(consumer_key, code)
-	config['OAUTH']['token'] = token
-	with open(rc_file, 'w') as configfile:
-		config.write(configfile)
-# else: everything shiny
-
-# parse arguments
-parser = argparse.ArgumentParser(description='A command line tool to manage your pocket items')
-parser.add_argument('-a', '--add', metavar='URL', nargs='+', help='add the URL(s) to your pocket')
-parser.add_argument('-t', '--tag', metavar='TAG', nargs='+', help='add the TAG( to the current item (specified by --add)')
-parser.add_argument('-u', '--unread', help='show a list of your unread items', action='store_true')
-parser.add_argument('-f', '--filter', metavar='TAG', nargs=1, help='show a list of all items with tag TAG')
-parser.add_argument('-v', '--verbose', help='print totally helpful debug messages', action='store_true')
-args = parser.parse_args()
-
-if not len(sys.argv) > 1:
-	parser.print_help()
-	exit(1)
-
-if args.verbose:
-	print("DEBUG: Using access token %s." % token)
-#
-if args.tag and not args.add:
-	print("Currently --tag only works in conjuction with --add.")
-if args.add:
-	if args.tag:
-		tags = concatenate_tags(args.tag)
-		for url in args.add:
-			item_id = add_with_tags(consumer_key, token, url, tags)
-			print("Added URL '%s' as item %d, with tag %s." %(url, item_id, tags))
-	else:
-		item_id = add_to_pocket(consumer_key, token, url)
-		print("Added URL '%s' as item %d." %(url, item_id))
-if args.unread:
-	list_unread(consumer_key, token)
-if args.filter:
+	# debug stuff
 	if args.verbose:
-		print("DEBUG: Filtering with tag '%s'." % args.filter[0])
-	list_filtered(args.filter[0], consumer_key, token)
+		print("DEBUG: Using access token %s." % auth.token)
+	# tag given, but no url to add the tag to
+	if args.tag and not args.add:
+		print("Currently --tag only works in conjuction with --add.")
+	# new item
+	if args.add:
+		if args.tag:
+			tags = auth.concatenate_tags(args.tag)
+			for url in args.add:
+				item_id = pocket.add_with_tags(url, tags)
+				print("Added URL '%s' as item %d, with tag %s."
+						% (url, item_id, tags))
+		else:
+			item_id = pocket.add_to_pocket(url)
+			print("Added URL '%s' as item %d." %(url, item_id))
+	# list unread items
+	if args.unread:
+		pocket.list_unread()
+	# filter by tag
+	if args.filter:
+		if args.verbose:
+			print("DEBUG: Filtering with tag '%s'." % args.filter[0])
+		pocket.list_filtered(args.filter[0])
+
+# call main method if not loaded as module
+if __name__ == "__main__":
+	main()
 
 #TODO encapsulate oauth, pocket. create main method parsing args, constructing pockethandler.
-#TODO Add --item, --tag, --filter (by tag)
