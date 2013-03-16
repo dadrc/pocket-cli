@@ -19,19 +19,74 @@ authorize_url = api_base + 'oauth/authorize'
 get_url = api_base + 'get'
 
 class PocketHandler:
-	key = ""
+	key = '11411-11f6716adafdbf8ee3401509'
+	rc_file = expanduser('~/.pocketrc')
+	config = configparser.ConfigParser(allow_no_value=True)
 	token = ""
+	
+	def __init__(self):
+		# load config, perform oauth if necessary
+		if (not isfile(self.rc_file)):
+			print("Config file not found, recreating.")
+			self.config['OAUTH'] = {
+					'code':'',
+					'token':''
+			}
+			with open(self.rc_file, 'w') as configfile:
+				self.config.write(configfile)
 
-	def __init__(self, key, token):
-		self.token = token
-		self.key = key
+		self.config.read(self.rc_file)
+		code = self.config['OAUTH']['code']
+		self.token = self.config['OAUTH']['token']
+		if (self.token == '' and code == ''):
+			# no token, no code, start oauth
+			code = self.oauth_code(self.key)
+			self.config['OAUTH']['code'] = code
+			with open(self.rc_file, 'w') as configfile:
+				self.config.write(configfile)
+			exit()
+		elif (self.token == ''):
+			# got code, get token
+			self.token = self.oauth_token(self.key, code)
+			self.config['OAUTH']['token'] = token
+			with open(rc_file, 'w') as configfile:
+				self.config.write(configfile)
+			# else: everything shiny
+	
+	#oauth
+	def oauth_code(self, key):
+		values = {
+				'consumer_key':key,
+				'redirect_uri':'https://getpocket.com/connected_accounts'
+		}
+		
+		resp_objects = self.pocket_request(values, request_url)
+		code = resp_objects['code']
+		
+		response = ("Please open "
+			"https://getpocket.com/auth/authorize?request_token=%s"
+			"&redirect_uri=https://getpocket.com/connected_accounts"
+			" in your browser, authorize pocket-cli and run pocket-cli again.")
+		print(response % code)
+		return code
 
-	def create_values(optional):
+	def oauth_token(self, key, reqcode):
+		values = {
+				'consumer_key':key,
+				'code':reqcode
+		}
+		
+		resp_objects = self.pocket_request(values, authorize_url)
+		#print(resp_objects)
+		token = resp_objects['access_token']
+		return token
+
+	def create_values(self, optional):
 		values = { 'consumer_key':self.key, 'access_token':self.token }
-		for key:values in optional.items():
-			values[key] = values
+		for key,value in optional.items():
+			values[key] = value
 
-	def pocket_request(values, target_url):
+	def pocket_request(self, values, target_url):
 		data = urlencode(values)
 		data = data.encode('UTF-8')
 		req = urllib.request.Request(target_url, data)
@@ -42,7 +97,7 @@ class PocketHandler:
 		# replace with parse_qs?
 		return dict(parse_qsl(response.read().decode('UTF-8')))
 
-	def pocket_request_json(values, target_url):
+	def pocket_request_json(self, values, target_url):
 		data = urlencode(values)
 		data = data.encode('UTF-8')
 		req = urllib.request.Request(target_url, data)
@@ -53,8 +108,8 @@ class PocketHandler:
 		return json.loads(response.read().decode('UTF-8'))
 
 
-	def list_filtered(tag):
-		values = create_values({'state':'all', 'tag':tag})
+	def list_filtered(self, tag):
+		values = self.create_values({'state':'all', 'tag':tag})
 		json = pocket_request_json(values, get_url)['list']
 		if not json:
 			print("No results.")
@@ -63,8 +118,8 @@ class PocketHandler:
 				print("%s: https://getpocket.com/a/read/%s"
 					% (item['resolved_title'], item['item_id']))
 
-	def list_unread():
-		values = create_values({'state':'unread'})
+	def list_unread(self):
+		values = self.create_values({'state':'unread'})
 		json = pocket_request_json(values, get_url)['list']
 		if not json:
 			print("No results")
@@ -73,80 +128,18 @@ class PocketHandler:
 				print("%s: https://getpocket.com/a/read/%s"
 					% (item['resolved_title'], item['item_id']))
 
-	def add_to_pocket(url):
-		values = create_values({'url':url})
+	def add_to_pocket(self, url):
+		values = self.create_values({'url':url})
 		response = pocket_request_json(values, add_url)
 		return int(response['item']['item_id'])
 
-	def add_with_tags(url, tags):
-		values = create_values({'url':url, 'tags':tags})
+	def add_with_tags(self, url, tags):
+		values = self.create_values({'url':url, 'tags':tags})
 		response = pocket_request_json(values, add_url)
 		return int(response['item']['item_id'])
 
-	def concatenate_tags(tag_list):
+	def concatenate_tags(self, tag_list):
 		return ','.join(tag_list)
-
-class AuthHandler:
-	consumer_key = '11411-11f6716adafdbf8ee3401509'
-	rc_file = expanduser('~/.pocketrc')
-	config = configparser.ConfigParser(allow_no_value=True)
-	token = ""
-
-	def __init__(self):
-		# load config, perform oauth if necessary
-		if (not isfile(rc_file)):
-			config['OAUTH'] = {
-					'code':'',
-					'token':''
-			}
-			with open(rc_file, 'w') as configfile:
-				config.write(configfile)
-
-		config.read(rc_file)
-		code = config['OAUTH']['code']
-		if (self.token == '' and code == ''):
-			# no token, no code, start oauth
-			code = oauth_code(consumer_key)
-			config['OAUTH']['code'] = code
-			with open(rc_file, 'w') as configfile:
-				config.write(configfile)
-			exit()
-		elif (self.token == ''):
-			# got code, get token
-			token = oauth_token(consumer_key, code)
-			config['OAUTH']['token'] = token
-			with open(rc_file, 'w') as configfile:
-				config.write(configfile)
-			# else: everything shiny
-	
-	#oauth
-	def oauth_code(key):
-		values = {
-				'consumer_key':key,
-				'redirect_uri':'https://getpocket.com/connected_accounts'
-		}
-		
-		resp_objects = pocket_request(values, request_url)
-		code = resp_objects['code']
-		
-		response = ("Please open "
-			"https://getpocket.com/auth/authorize?request_token=%s"
-			"&redirect_uri=https://getpocket.com/connected_accounts"
-			" in your browser, authorize pocket-cli and run pocket-cli again.")
-		print(response % code)
-		return code
-
-	def oauth_token(key, reqcode):
-		values = {
-				'consumer_key':key,
-				'code':reqcode
-		}
-		
-		resp_objects = pocket_request(values, authorize_url)
-		#print(resp_objects)
-		token = resp_objects['access_token']
-		return token
-
 
 def main():
 	# init parser
@@ -169,12 +162,11 @@ def main():
 		parser.print_help()
 		exit(1)
 	# we've got valid arguments, spawn stuff
-	auth = AuthHandler()
-	pocket = PocketHandler(auth.consumer_key, auth.token)
+	pocket = PocketHandler()
 
 	# debug stuff
 	if args.verbose:
-		print("DEBUG: Using access token %s." % auth.token)
+		print("DEBUG: Using access token %s." % pocket.token)
 	# tag given, but no url to add the tag to
 	if args.tag and not args.add:
 		print("Currently --tag only works in conjuction with --add.")
