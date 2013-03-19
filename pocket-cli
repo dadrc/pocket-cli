@@ -18,13 +18,15 @@ request_url =  api_base + 'oauth/request'
 authorize_url = api_base + 'oauth/authorize'
 get_url = api_base + 'get'
 
-class PocketHandler:
+class AuthHandler:
 	key = '11411-11f6716adafdbf8ee3401509'
 	rc_file = expanduser('~/.pocketrc')
 	config = configparser.ConfigParser(allow_no_value=True)
 	token = ""
-	
-	def __init__(self):
+	verbose = False
+
+	def __init__(self, verbose):
+		self.verbose = verbose
 		# load config, perform oauth if necessary
 		if (not isfile(self.rc_file)):
 			print("Config file not found, recreating.")
@@ -52,7 +54,6 @@ class PocketHandler:
 			with open(rc_file, 'w') as configfile:
 				self.config.write(configfile)
 			# else: everything shiny
-	
 	#oauth
 	def oauth_code(self, key):
 		values = {
@@ -60,7 +61,7 @@ class PocketHandler:
 				'redirect_uri':'https://getpocket.com/connected_accounts'
 		}
 		
-		resp_objects = self.pocket_request(values, request_url)
+		resp_objects = self.request(values, request_url)
 		code = resp_objects['code']
 		
 		response = ("Please open "
@@ -76,17 +77,12 @@ class PocketHandler:
 				'code':reqcode
 		}
 		
-		resp_objects = self.pocket_request(values, authorize_url)
+		resp_objects = self.request(values, authorize_url)
 		#print(resp_objects)
 		token = resp_objects['access_token']
 		return token
 
-	def create_values(self, optional):
-		values = { 'consumer_key':self.key, 'access_token':self.token }
-		for key,value in optional.items():
-			values[key] = value
-
-	def pocket_request(self, values, target_url):
+	def request(self, values, target_url):
 		data = urlencode(values)
 		data = data.encode('UTF-8')
 		req = urllib.request.Request(target_url, data)
@@ -97,7 +93,21 @@ class PocketHandler:
 		# replace with parse_qs?
 		return dict(parse_qsl(response.read().decode('UTF-8')))
 
-	def pocket_request_json(self, values, target_url):
+class PocketHandler:
+	auth = None
+	verbose = False
+	
+	def __init__(self, auth, verbose):
+		self.verbose = verbose
+		self.auth = auth
+
+	def create_values(self, optional):
+		values = { 'consumer_key':self.auth.key, 'access_token':self.auth.token }
+		for key,value in optional.items():
+			values[key] = value
+		return values
+
+	def get_json(self, values, target_url):
 		data = urlencode(values)
 		data = data.encode('UTF-8')
 		req = urllib.request.Request(target_url, data)
@@ -110,7 +120,7 @@ class PocketHandler:
 
 	def list_filtered(self, tag):
 		values = self.create_values({'state':'all', 'tag':tag})
-		json = pocket_request_json(values, get_url)['list']
+		json = self.get_json(values, get_url)['list']
 		if not json:
 			print("No results.")
 		else:
@@ -120,7 +130,7 @@ class PocketHandler:
 
 	def list_unread(self):
 		values = self.create_values({'state':'unread'})
-		json = pocket_request_json(values, get_url)['list']
+		json = self.get_json(values, get_url)['list']
 		if not json:
 			print("No results")
 		else:
@@ -130,12 +140,12 @@ class PocketHandler:
 
 	def add_to_pocket(self, url):
 		values = self.create_values({'url':url})
-		response = pocket_request_json(values, add_url)
+		response = self.get_json(values, add_url)
 		return int(response['item']['item_id'])
 
 	def add_with_tags(self, url, tags):
 		values = self.create_values({'url':url, 'tags':tags})
-		response = pocket_request_json(values, add_url)
+		response = self.get_json(values, add_url)
 		return int(response['item']['item_id'])
 
 	def concatenate_tags(self, tag_list):
@@ -162,7 +172,8 @@ def main():
 		parser.print_help()
 		exit(1)
 	# we've got valid arguments, spawn stuff
-	pocket = PocketHandler()
+	auth = AuthHandler(args.verbose)
+	pocket = PocketHandler(auth, args.verbose)
 
 	# debug stuff
 	if args.verbose:
@@ -179,8 +190,9 @@ def main():
 				print("Added URL '%s' as item %d, with tag %s."
 						% (url, item_id, tags))
 		else:
-			item_id = pocket.add_to_pocket(url)
-			print("Added URL '%s' as item %d." %(url, item_id))
+			for url in args.add:
+				item_id = pocket.add_to_pocket(url)
+				print("Added URL '%s' as item %d." %(url, item_id))
 	# list unread items
 	if args.unread:
 		pocket.list_unread()
@@ -193,5 +205,3 @@ def main():
 # call main method if not loaded as module
 if __name__ == "__main__":
 	main()
-
-#TODO encapsulate oauth, pocket. create main method parsing args, constructing pockethandler.
