@@ -145,7 +145,8 @@ class PocketHandler:
 		response = self.get_json(values, add_url)
 		return int(response['item']['item_id'])
 
-	def add_with_tags(self, url, tags):
+	def add_with_tags(self, url, tag_list):
+		tags = self.concatenate_tags(tag_list)
 		values = self.create_values({'url':url, 'tags':tags})
 		response = self.get_json(values, add_url)
 		return int(response['item']['item_id'])
@@ -186,9 +187,8 @@ def main():
 	# new item
 	if args.add:
 		if args.tag:
-			tags = auth.concatenate_tags(args.tag)
 			for url in args.add:
-				item_id = pocket.add_with_tags(url, tags)
+				item_id = pocket.add_with_tags(url, args.tag)
 				print("Added URL '%s' as item %d, with tag %s."
 						% (url, item_id, tags))
 		else:
