@@ -64,14 +64,13 @@ class AuthHandler:
 				'redirect_uri':'https://getpocket.com/connected_accounts'
 		}
 		
-		resp_objects = self.request(values, request_url)
-		code = resp_objects['code']
-		
-		response = ("Please open "
+		response = self.request(values, request_url)
+		code = response['code']
+		message = ("Please open "
 			"https://getpocket.com/auth/authorize?request_token=%s"
 			"&redirect_uri=https://getpocket.com/connected_accounts"
 			" in your browser, authorize pocket-cli and run pocket-cli again.")
-		print(response % code)
+		print(message % code)
 		return code
 
 	def oauth_token(self, key, reqcode):
