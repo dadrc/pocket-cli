@@ -11,6 +11,8 @@ from os.path import isfile
 from os.path import expanduser
 import json
 
+# TODO change token and code to None for better readability. check if config supports that.
+
 # config
 api_base = 'https://getpocket.com/v3/'
 add_url = api_base + 'add'
