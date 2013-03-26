@@ -164,7 +164,7 @@ class PocketHandler:
 def main():
 	# init parser
 	parser = argparse.ArgumentParser(description=('A command line tool'
-		'to manage your pocket items'))
+		' to manage your pocket items'))
 	parser.add_argument('-a', '--add', metavar='URL', nargs='+',
 		help='add the URL(s) to your pocket')
 	parser.add_argument('-t', '--tag', metavar='TAG', nargs='+',
