@@ -189,6 +189,7 @@ def main():
 		if args.tag:
 			for url in args.add:
 				item_id = pocket.add_with_tags(url, args.tag)
+				tags = pocket.concatenate_tags(args.tag)
 				print("Added URL '%s' as item %d, with tag %s."
 						% (url, item_id, tags))
 		else:
