@@ -26,7 +26,6 @@ class AuthHandler:
 	rc_file = expanduser('~/.pocketrc')
 	config = configparser.ConfigParser(allow_no_value=True)
 	token = ""
-	verbose = False
 
 	def __init__(self, verbose):
 		self.verbose = verbose
@@ -96,9 +95,6 @@ class AuthHandler:
 		return dict(parse_qsl(response.read().decode('UTF-8')))
 
 class PocketHandler:
-	auth = None
-	verbose = False
-	
 	def __init__(self, auth, verbose, direct):
 		self.verbose = verbose
 		self.auth = auth
