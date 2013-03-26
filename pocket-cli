@@ -177,8 +177,8 @@ def main():
 		help='print totally helpful debug messages',
 		action='store_true')
 	parser.add_argument('-d', '--direct',
-    	help='get the actual URLs instead of pocket-URLs',
-        action='store_true')
+		help='get the actual URLs instead of pocket-URLs',
+		action='store_true')
 	args = parser.parse_args()
 	# parse arguments
 	if not len(sys.argv) > 1:
