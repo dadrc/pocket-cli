@@ -99,9 +99,10 @@ class PocketHandler:
 	auth = None
 	verbose = False
 	
-	def __init__(self, auth, verbose):
+	def __init__(self, auth, verbose, direct):
 		self.verbose = verbose
 		self.auth = auth
+		self.direct = direct
 
 	def create_values(self, optional):
 		values = { 'consumer_key':self.auth.key, 'access_token':self.auth.token }
@@ -127,8 +128,11 @@ class PocketHandler:
 			print("No results.")
 		else:
 			for item in sorted(json.values(), key=lambda item: item['sort_id']):
-				print("%s: https://getpocket.com/a/read/%s"
-					% (item['resolved_title'], item['item_id']))
+				if self.direct:
+					print("%s: %s" % (item['resolved_title'], item['given_url'])) 
+				else:
+					print("%s: https://getpocket.com/a/read/%s"
+						% (item['resolved_title'], item['item_id']))
 
 	def list_unread(self):
 		values = self.create_values({'state':'unread'})
@@ -137,8 +141,11 @@ class PocketHandler:
 			print("No results")
 		else:
 			for item in sorted(json.values(), key=lambda item: item['sort_id']):
-				print("%s: https://getpocket.com/a/read/%s"
-					% (item['resolved_title'], item['item_id']))
+				if self.direct:
+					print("%s: %s" % (item['resolved_title'], item['given_url']))
+				else:
+					print("%s: https://getpocket.com/a/read/%s"
+						% (item['resolved_title'], item['item_id']))
 
 	def add_to_pocket(self, url):
 		values = self.create_values({'url':url})
@@ -169,6 +176,9 @@ def main():
 	parser.add_argument('-v', '--verbose',
 		help='print totally helpful debug messages',
 		action='store_true')
+	parser.add_argument('-d', '--direct',
+    	help='get the actual URLs instead of pocket-URLs',
+        action='store_true')
 	args = parser.parse_args()
 	# parse arguments
 	if not len(sys.argv) > 1:
@@ -176,7 +186,7 @@ def main():
 		exit(1)
 	# we've got valid arguments, spawn stuff
 	auth = AuthHandler(args.verbose)
-	pocket = PocketHandler(auth, args.verbose)
+	pocket = PocketHandler(auth, args.verbose, args.direct)
 
 	# debug stuff
 	if args.verbose:
@@ -184,6 +194,10 @@ def main():
 	# tag given, but no url to add the tag to
 	if args.tag and not args.add:
 		print("Currently --tag only works in conjuction with --add.")
+	# direct option given but no option to fetch urls
+	if args.direct and not (args.unread or args.filter):
+		 print('-d requires -f or -u in order to work', file=sys.stderr)
+
 	# new item
 	if args.add:
 		if args.tag:
