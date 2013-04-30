@@ -12,7 +12,6 @@ from os.path import expanduser
 import json
 
 #TODO change token and code to None for better readability. check if config supports that.
-#TODO move debug output to classes, that's what verbose is for.
 
 # config
 api_base = 'https://getpocket.com/v3/'
@@ -119,6 +118,8 @@ class PocketHandler:
 
 
 	def list_filtered(self, tag):
+		if self.verbose:
+			print("DEBUG: Filtering with tag '%s'." % tag)
 		values = self.create_values({'state':'all', 'tag':tag})
 		json = self.get_json(values, get_url)['list']
 		if not json:
@@ -220,8 +221,6 @@ def main():
 		pocket.list_unread()
 	# filter by tag
 	if args.filter:
-		if args.verbose:
-			print("DEBUG: Filtering with tag '%s'." % args.filter[0])
 		pocket.list_filtered(args.filter[0])
 	if args.remove:
 		pocket.remove(args.remove[0])
