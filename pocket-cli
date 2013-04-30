@@ -52,8 +52,8 @@ class AuthHandler:
 		elif (self.token == ''):
 			# got code, get token
 			self.token = self.oauth_token(self.key, code)
-			self.config['OAUTH']['token'] = token
-			with open(rc_file, 'w') as configfile:
+			self.config['OAUTH']['token'] = self.token
+			with open(self.rc_file, 'w') as configfile:
 				self.config.write(configfile)
 			# else: everything shiny
 	#oauth
