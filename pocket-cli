@@ -20,6 +20,7 @@ add_url = api_base + 'add'
 request_url =  api_base + 'oauth/request'
 authorize_url = api_base + 'oauth/authorize'
 get_url = api_base + 'get'
+modify_url = api_base + 'send'
 
 class AuthHandler:
 	key = '11411-11f6716adafdbf8ee3401509'
@@ -143,6 +144,12 @@ class PocketHandler:
 					print("%s: https://getpocket.com/a/read/%s"
 						% (item['resolved_title'], item['item_id']))
 
+	def remove(self, item_id):
+		# json hack from hell
+		values = self.create_values({'actions':'[{"action":"delete","item_id":"%s"}]' % item_id })
+		response = self.get_json(values, modify_url)
+		return (response['status'] is not 0)
+
 	def add_to_pocket(self, url):
 		values = self.create_values({'url':url})
 		response = self.get_json(values, add_url)
@@ -169,6 +176,8 @@ def main():
 		action='store_true')
 	parser.add_argument('-f', '--filter', metavar='TAG', nargs=1,
 		help='show a list of all items with tag TAG')
+	parser.add_argument('-r', '--remove', metavar='ID', nargs=1,
+		help='delete the item #ID from your pocket.')
 	parser.add_argument('-v', '--verbose',
 		help='print totally helpful debug messages',
 		action='store_true')
@@ -214,6 +223,8 @@ def main():
 		if args.verbose:
 			print("DEBUG: Filtering with tag '%s'." % args.filter[0])
 		pocket.list_filtered(args.filter[0])
+	if args.remove:
+		pocket.remove(args.remove[0])
 
 # call main method if not loaded as module
 if __name__ == "__main__":
