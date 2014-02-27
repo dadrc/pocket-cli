@@ -134,7 +134,7 @@ class PocketHandler:
         if not json:
             print("No results.")
         else:
-            print_json(json)
+            self.print_json(json)
 
 
     def list_unread(self):
@@ -143,7 +143,7 @@ class PocketHandler:
         if not json:
             print("No results")
         else:
-            print_json(json)            
+            self.print_json(json)            
 
     def remove(self, item_id):
         # json hack from hell
