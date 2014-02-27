@@ -11,7 +11,8 @@ from os.path import isfile
 from os.path import expanduser
 import json
 
-#TODO change token and code to None for better readability. check if config supports that.
+#TODO change token and code to None for better readability.
+#TODO check if config supports that.
 
 # config
 api_base = 'https://getpocket.com/v3/'
@@ -101,7 +102,7 @@ class PocketHandler:
         self.direct = direct
 
     def create_values(self, optional):
-        values = { 'consumer_key':self.auth.key, 'access_token':self.auth.token }
+        values = { 'consumer_key':self.auth.key, 'access_token':self.auth.token}
         for key,value in optional.items():
             values[key] = value
         return values
@@ -116,6 +117,14 @@ class PocketHandler:
             raise Exception("Expected code 200, got {}".format(response.status))
         return json.loads(response.read().decode('UTF-8'))
 
+    def print_json(self, json):
+        for item in sorted(json.values(), key=lambda item: item['sort_id']):
+            if self.direct:
+                msg = "{}: {}"
+                print(msg.format(item['resolved_title'], item['given_url'])) 
+            else:
+                msg = "{}: https://getpocket.com/a/read/{}"
+                print(msg.format(item['resolved_title'], item['item_id']))
 
     def list_filtered(self, tag):
         if self.verbose:
@@ -125,11 +134,8 @@ class PocketHandler:
         if not json:
             print("No results.")
         else:
-            for item in sorted(json.values(), key=lambda item: item['sort_id']):
-                if self.direct:
-                    print("{}: {}".format(item['resolved_title'], item['given_url'])) 
-                else:
-                    print("{}: https://getpocket.com/a/read/{}".format(item['resolved_title'], item['item_id']))
+            print_json(json)
+
 
     def list_unread(self):
         values = self.create_values({'state':'unread'})
@@ -137,15 +143,14 @@ class PocketHandler:
         if not json:
             print("No results")
         else:
-            for item in sorted(json.values(), key=lambda item: item['sort_id']):
-                if self.direct:
-                    print("{}: {}".format(item['resolved_title'], item['given_url'])) 
-                else:
-                    print("{}: https://getpocket.com/a/read/{}".format(item['resolved_title'], item['item_id']))
+            print_json(json)            
 
     def remove(self, item_id):
         # json hack from hell
-        values = self.create_values({'actions':'[{"action":"delete","item_id":"{}"}]'.format(item_id)})
+        new_json = {
+            'actions':'[{"action":"delete","item_id":"{}"}]'.format(item_id)
+        }
+        values = self.create_values(new_json)
         response = self.get_json(values, modify_url)
         return (response['status'] is not 0)
 
@@ -171,7 +176,8 @@ def main():
         help='add the URL(s) to your pocket')
     parser.add_argument('-t', '--tag', metavar='TAG', nargs='+',
         help='add the TAG to the current item (specified by --add)')
-    parser.add_argument('-u', '--unread', help='show a list of your unread items',
+    parser.add_argument('-u', '--unread',
+        help='show a list of your unread items',
         action='store_true')
     parser.add_argument('-f', '--filter', metavar='TAG', nargs=1,
         help='show a list of all items with tag TAG')
@@ -208,11 +214,13 @@ def main():
             for url in args.add:
                 item_id = pocket.add_with_tags(url, args.tag)
                 tags = pocket.concatenate_tags(args.tag)
-                print("Added URL '{}' as item {}, with tag {}.".format(url, item_id, tags))
+                msg = "Added URL '{}' as item {}, with tag {}."
+                print(msg.format(url, item_id, tags))
         else:
             for url in args.add:
                 item_id = pocket.add_to_pocket(url)
-                print("Added URL '{}' as item {}.".format(url, item_id))
+                msg = "Added URL '{}' as item {}."
+                print(msg.format(url, item_id))
     # list unread items
     if args.unread:
         pocket.list_unread()
