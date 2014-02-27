@@ -136,7 +136,6 @@ class PocketHandler:
         else:
             self.print_json(json)
 
-
     def list_unread(self):
         values = self.create_values({'state':'unread'})
         json = self.get_json(values, get_url)['list']
