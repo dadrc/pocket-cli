@@ -1,15 +1,11 @@
 #!/usr/bin/env python3
 import sys
 import argparse
-from urllib.parse import urlencode
-from urllib.parse import parse_qsl
-from urllib.parse import parse_qs
-from urllib.request import urlopen
-import urllib
 import configparser
-from os.path import isfile
-from os.path import expanduser
 import json
+from urllib.parse import urlencode, parse_qsl, parse_qs
+from urllib.request import urlopen, Request
+from os.path import isfile, expanduser
 
 #TODO change token and code to None for better readability.
 #TODO check if config supports that.
@@ -87,7 +83,7 @@ class AuthHandler:
     def request(self, values, target_url):
         data = urlencode(values)
         data = data.encode('UTF-8')
-        req = urllib.request.Request(target_url, data)
+        req = Request(target_url, data)
         response = urlopen(req)
         # error handling
         if (response.status != 200):
@@ -110,7 +106,7 @@ class PocketHandler:
     def get_json(self, values, target_url):
         data = urlencode(values)
         data = data.encode('UTF-8')
-        req = urllib.request.Request(target_url, data)
+        req = Request(target_url, data)
         response = urlopen(req)
         # error handling
         if (response.status != 200):
