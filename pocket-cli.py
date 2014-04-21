@@ -172,7 +172,7 @@ def main():
     parser = argparse.ArgumentParser(description=('A command line tool'
         ' to manage your pocket items'))
     parser.add_argument('-a', '--add', metavar='URL', nargs='+',
-        help='add the URL(s) to your pocket')
+        help='add the URL(s) to your pocket, titles can optionally be specified in the format <url>@<title>')
     parser.add_argument('-t', '--tag', metavar='TAG', nargs='+',
         help='add the TAG to the current item (specified by --add)')
     parser.add_argument('-u', '--unread',
