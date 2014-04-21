@@ -100,7 +100,11 @@ class PocketHandler:
     def create_values(self, optional):
         values = { 'consumer_key':self.auth.key, 'access_token':self.auth.token}
         for key,value in optional.items():
-            values[key] = value
+            if key == 'url' and '@' in value:
+                (values['url'], values['title']) = value.split('@', 1)
+            else:
+                values[key] = value
+
         return values
 
     def get_json(self, values, target_url):
