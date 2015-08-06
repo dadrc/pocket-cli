@@ -155,6 +155,14 @@ class PocketHandler:
         else:
             self.print_json(json)
 
+    def print_all_json(self):
+        values = self.create_values({'state':'all'})
+        json = self.get_json(values, get_url)['list']
+        if not json:
+            print("No results")
+        else:
+            print(json)
+
     def remove(self, item_id):
         # json hack from hell
         new_json = {
@@ -191,6 +199,9 @@ def main():
                         ' item (specified by --add)')
     parser.add_argument('-u', '--unread',
                         help='show a list of your unread items',
+                        action='store_true')
+    parser.add_argument('-j', '--json',
+                        help='show all items (json format)',
                         action='store_true')
     parser.add_argument('-f', '--filter', metavar='TAG', nargs=1,
                         help='show a list of all items with tag TAG')
@@ -237,6 +248,9 @@ def main():
     # list unread items
     if args.unread:
         pocket.list_unread()
+    # list all (json format)
+    if args.json:
+        pocket.print_all_json()
     # filter by tag
     if args.filter:
         pocket.list_filtered(args.filter[0])
