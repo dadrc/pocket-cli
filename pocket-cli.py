@@ -166,7 +166,7 @@ class PocketHandler:
     def remove(self, item_id):
         # json hack from hell
         new_json = {
-            'actions': '[{"action":"delete","item_id":"{}"}]'.format(item_id)
+            'actions': '[{{"action":"delete","item_id":"{}"}}]'.format(item_id)
         }
         values = self.create_values(new_json)
         response = self.get_json(values, modify_url)
