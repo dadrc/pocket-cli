@@ -172,6 +172,15 @@ class PocketHandler:
         response = self.get_json(values, modify_url)
         return (response['status'] is not 0)
 
+    def archive(self, item_id):
+        # json hack from hell
+        new_json = {
+            'actions': '[{{"action":"archive","item_id":"{}"}}]'.format(item_id)
+        }
+        values = self.create_values(new_json)
+        response = self.get_json(values, modify_url)
+        return (response['status'] is not 0)
+
     def add_to_pocket(self, url):
         values = self.create_values({'url': url})
         response = self.get_json(values, add_url)
@@ -207,6 +216,8 @@ def main():
                         help='show a list of all items with tag TAG')
     parser.add_argument('-r', '--remove', metavar='ID', nargs=1,
                         help='delete the item #ID from your pocket.')
+    parser.add_argument('-c', '--archive', metavar='ID', nargs=1,
+                        help='archive the item #ID from your pocket.')
     parser.add_argument('-v', '--verbose',
                         help='print totally helpful debug messages',
                         action='store_true')
@@ -256,6 +267,8 @@ def main():
         pocket.list_filtered(args.filter[0])
     if args.remove:
         pocket.remove(args.remove[0])
+    if args.archive:
+        pocket.archive(args.archive[0])
 
 # call main method if not loaded as module
 if __name__ == "__main__":
