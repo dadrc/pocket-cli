@@ -155,10 +155,27 @@ class PocketHandler:
         else:
             self.print_json(json)
 
+    def print_all_json(self):
+        values = self.create_values({'state':'all'})
+        json = self.get_json(values, get_url)['list']
+        if not json:
+            print("No results")
+        else:
+            print(json)
+
     def remove(self, item_id):
         # json hack from hell
         new_json = {
-            'actions': '[{"action":"delete","item_id":"{}"}]'.format(item_id)
+            'actions': '[{{"action":"delete","item_id":"{}"}}]'.format(item_id)
+        }
+        values = self.create_values(new_json)
+        response = self.get_json(values, modify_url)
+        return (response['status'] is not 0)
+
+    def archive(self, item_id):
+        # json hack from hell
+        new_json = {
+            'actions': '[{{"action":"archive","item_id":"{}"}}]'.format(item_id)
         }
         values = self.create_values(new_json)
         response = self.get_json(values, modify_url)
@@ -192,10 +209,15 @@ def main():
     parser.add_argument('-u', '--unread',
                         help='show a list of your unread items',
                         action='store_true')
+    parser.add_argument('-j', '--json',
+                        help='show all items (json format)',
+                        action='store_true')
     parser.add_argument('-f', '--filter', metavar='TAG', nargs=1,
                         help='show a list of all items with tag TAG')
     parser.add_argument('-r', '--remove', metavar='ID', nargs=1,
                         help='delete the item #ID from your pocket.')
+    parser.add_argument('-c', '--archive', metavar='ID', nargs=1,
+                        help='archive the item #ID from your pocket.')
     parser.add_argument('-v', '--verbose',
                         help='print totally helpful debug messages',
                         action='store_true')
@@ -237,11 +259,16 @@ def main():
     # list unread items
     if args.unread:
         pocket.list_unread()
+    # list all (json format)
+    if args.json:
+        pocket.print_all_json()
     # filter by tag
     if args.filter:
         pocket.list_filtered(args.filter[0])
     if args.remove:
         pocket.remove(args.remove[0])
+    if args.archive:
+        pocket.archive(args.archive[0])
 
 # call main method if not loaded as module
 if __name__ == "__main__":
