@@ -172,6 +172,15 @@ class PocketHandler:
         response = self.get_json(values, modify_url)
         return (response['status'] is not 0)
 
+    def favorite(self, item_id):
+        # json hack from hell
+        new_json = {
+            'actions': '[{{"action":"favorite","item_id":"{}"}}]'.format(item_id)
+        }
+        values = self.create_values(new_json)
+        response = self.get_json(values, modify_url)
+        return (response['status'] is not 0)
+
     def archive(self, item_id):
         # json hack from hell
         new_json = {
@@ -212,6 +221,8 @@ def main():
     parser.add_argument('-j', '--json',
                         help='show all items (json format)',
                         action='store_true')
+    parser.add_argument('--favorite', metavar='ID', nargs=1,
+                        help='favorite the item #ID from your pocket.')
     parser.add_argument('-f', '--filter', metavar='TAG', nargs=1,
                         help='show a list of all items with tag TAG')
     parser.add_argument('-r', '--remove', metavar='ID', nargs=1,
@@ -265,6 +276,8 @@ def main():
     # filter by tag
     if args.filter:
         pocket.list_filtered(args.filter[0])
+    if args.favorite:
+        pocket.favorite(args.favorite[0])
     if args.remove:
         pocket.remove(args.remove[0])
     if args.archive:
