@@ -134,7 +134,7 @@ class PocketHandler:
                 msg = "{}: {}"
                 print(msg.format(title, item['given_url']))
             else:
-                msg = "{}: https://getpocket.com/a/read/{}"
+                msg = "{}: https://app.getpocket.com/read/{}"
                 print(msg.format(title, item['item_id']))
 
     def list_filtered(self, tag):
