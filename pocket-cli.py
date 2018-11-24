@@ -3,6 +3,7 @@ import sys
 import argparse
 import configparser
 import json
+import re
 from urllib.parse import urlencode, parse_qsl, parse_qs
 from urllib.request import urlopen, Request
 from os.path import isfile, expanduser
@@ -204,6 +205,14 @@ class PocketHandler:
     def concatenate_tags(self, tag_list):
         return ','.join(tag_list)
 
+def add_prefix(url):
+    '''Automatically adds 'https://' prefix if absent from URL'''
+    # TODO make this feature a configurable option?
+    url_regex = re.compile(r'^\w{1,6}://')
+    if not url_regex.match(url):
+        print('Warning: url "' + url + '" has no prefix; adding https://')
+        url = 'https://' + url
+    return url
 
 def main():
     # init parser
@@ -258,12 +267,14 @@ def main():
     if args.add:
         if args.tag:
             for url in args.add:
+                url = add_prefix(url) # Add 'https://' prefix if absent
                 item_id = pocket.add_with_tags(url, args.tag)
                 tags = pocket.concatenate_tags(args.tag)
                 msg = "Added URL '{}' as item {}, with tag {}."
                 print(msg.format(url, item_id, tags))
         else:
             for url in args.add:
+                url = add_prefix(url) # Add 'https://' prefix if absent
                 item_id = pocket.add_to_pocket(url)
                 msg = "Added URL '{}' as item {}."
                 print(msg.format(url, item_id))
